@@ -1,0 +1,11 @@
+streamlit>=1.10
+pandas>=1.5
+numpy>=1.24
+sentence-transformers>=2.2.2
+# `sentence-transformers` requires a backend (PyTorch). Install a compatible torch for your platform:
+# For CPU-only macOS/Linux: `pip install torch --index-url https://download.pytorch.org/whl/cpu`
+torch>=1.13
+transformers>=4.30
+
+# Optional utilities
+# bibtexparser>=1.2.0  # Uncomment if you need BibTeX import/export support
