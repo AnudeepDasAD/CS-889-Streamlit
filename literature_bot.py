@@ -37,20 +37,59 @@ if not df.empty:
     # 2. Input
     query = st.sidebar.text_input("Enter search terms:", "")
     
-    # 3. Standard Filters (Years & Keywords)
+    # Filters control
+    filters_enabled = st.sidebar.checkbox("Enable filters (blurred when disabled)", value=False)
+    
+    # 3. Filters (Years & Keywords) — shown but disabled when not enabled
     min_yr, max_yr = int(df['year'].min()), int(df['year'].max())
-    year_range = st.sidebar.slider("Publication Year", min_yr, max_yr, (min_yr, max_yr))
+    year_range = st.sidebar.slider("Publication Year", min_yr, max_yr, (min_yr, max_yr), disabled=not filters_enabled)
     
     all_keywords = sorted(list(set([kw for sublist in df['keywords'] for kw in sublist])))
-    selected_keywords = st.sidebar.multiselect("Filter by Keywords", all_keywords)
+    selected_keywords = st.sidebar.multiselect("Filter by Keywords", all_keywords, disabled=not filters_enabled)
+
+    # Search Complete button
+    search_complete = st.sidebar.button("Search Complete")
+
+    # CSS blur overlay for disabled filters
+    if not filters_enabled:
+        st.sidebar.markdown(
+            """
+            <style>
+            .filters-overlay {
+                position: relative;
+            }
+            .filters-overlay::after {
+                content: 'Filters disabled — click "Enable filters" to unlock';
+                position: absolute;
+                left: 0;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255,255,255,0.6);
+                backdrop-filter: blur(4px);
+                border-radius: 8px;
+                z-index: 9;
+                font-weight:600;
+                color:#333;
+            }
+            </style>
+            <div class="filters-overlay"></div>
+            """, unsafe_allow_html=True
+        )
 
     # --- Filtering Logic ---
-    # Apply standard Year/Keyword filters first
-    mask = (df['year'] >= year_range[0]) & (df['year'] <= year_range[1])
-    if selected_keywords:
-        mask &= df['keywords'].apply(lambda x: any(kw in x for kw in selected_keywords))
-    
-    results_df = df[mask].copy()
+    if filters_enabled:
+        # Apply Year/Keyword filters
+        mask = (df['year'] >= year_range[0]) & (df['year'] <= year_range[1])
+        if selected_keywords:
+            mask &= df['keywords'].apply(lambda x: any(kw in x for kw in selected_keywords))
+        results_df = df[mask].copy()
+    else:
+        # Filters are disabled — do not filter by year/keywords
+        results_df = df.copy()
 
     # Apply Text Search based on Mode
     if query and not results_df.empty:
@@ -96,3 +135,13 @@ if not df.empty:
                     st.write(row['abstract'])
                     st.markdown(f"**Keywords:** " + ", ".join([f"`{k}`" for k in row['keywords']]))
                 st.divider()
+
+    # Handle Search Complete Button
+    if search_complete:
+        selected_articles = [row for _, row in results_df.iterrows() if st.session_state.get(f"sel_{row['id']}", False)]
+        if selected_articles:
+            st.success("Search completed! Here are the selected articles:")
+            for art in selected_articles:
+                st.write(f"- **{art['title']}** by {', '.join(art['authors'])} ({art['year']})")
+        else:
+            st.info("Search completed, but no articles were selected.")
